@@ -1,0 +1,40 @@
+#BERNSTEIN VAZARANI
+
+
+import qiskit
+from qiskit import* 
+import numpy as np
+
+
+secretnumber='1010100'#secret number
+secretnumber=secretnumber[::-1]#reverse the secret number
+size=len(secretnumber)+1#number of qubits + ancilla bit
+qc=QuantumCircuit(int(size),int(size)-1)#a quantum circuit of specified number of qubits and classical bits
+qc.x(int(size)-1) #x gate on ancilla qubit
+
+for ii in range(int(size)-1):# for loop for hadamard qubits except for ancilla
+ qc.h(ii)
+qc.h(int(size)-1)#hadamard qubits for ancilla
+qc.barrier()
+for z in range(int(size)-1):#cnot to only qubits which are having 1 so that circuit can detect them while measuring
+ if secretnumber[z]=='1':
+  qc.cx(z,int(size)-1)
+ 
+qc.barrier()
+for w in range(int(size)-1): #applying hadamard to qubits except for ancilla for identifying the seccret number
+ qc.h(w)
+ 
+
+qc.barrier()
+
+
+for ii in range(int(size)-1):#measure qubits take the measurement store it into classical bits 
+ qc.measure(ii,ii)
+
+simulation=Aer.get_backend('qasm_simulator')#Aer component of qiskit is used to do simulation of our quantum cicuit
+#on our load computer
+#simulator can be imported from Aer by writing the above code
+result=execute(qc,backend=simulation,shot=1).result()#execute and hold the info that come back from executing that circuit
+from qiskit.tools.visualization import plot_histogram#to see what result it contain so we execute some visualization
+#tools from qiskit
+plot_histogram(result.get_counts(qc))
