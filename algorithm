@@ -38,3 +38,137 @@ result=execute(qc,backend=simulation,shot=1).result()#execute and hold the info 
 from qiskit.tools.visualization import plot_histogram#to see what result it contain so we execute some visualization
 #tools from qiskit
 plot_histogram(result.get_counts(qc))
+
+
+
+
+
+#QUANTUM TELPORTATION
+
+
+def initialize_qubit(given_circuit, qubit_index):
+    
+    import numpy as np
+    given_circuit.initialize([np.sqrt(0.70), np.sqrt(0.30)], qubit_index)
+    return given_circuit
+def entangle_qubits(given_circuit, qubit_Alice, qubit_Bob):
+    given_circuit.h(qubit_Alice)
+    given_circuit.cx(qubit_Alice, qubit_Bob)
+    return given_circuit
+def bell_meas_Alice_qubits(given_circuit, qubit1_Alice, qubit2_Alice, clbit1_Alice, clbit2_Alice):
+    given_circuit.cx(qubit1_Alice, qubit2_Alice)
+    given_circuit.h(qubit1_Alice)
+    given_circuit.barrier()
+    given_circuit.measure(qubit1_Alice, clbit1_Alice)
+    given_circuit.measure(qubit2_Alice, clbit2_Alice)
+    return given_circuit
+def controlled_ops_Bob_qubit(given_circuit, qubit_Bob, clbit1_Alice, clbit2_Alice):
+    given_circuit.x(qubit_Bob).c_if(clbit2_Alice, 1)
+    given_circuit.z(qubit_Bob).c_if(clbit1_Alice, 1)    
+    return given_circuit
+
+from qiskit import QuantumRegister, ClassicalRegister
+
+# set up the qubits and classical bits
+all_qubits_Alice = QuantumRegister(2)
+all_qubits_Bob = QuantumRegister(1)
+creg1_Alice = ClassicalRegister(1)
+creg2_Alice = ClassicalRegister(1)
+
+# quantum teleportation circuit here
+
+# Initialize
+mycircuit = QuantumCircuit(all_qubits_Alice, all_qubits_Bob, creg1_Alice, creg2_Alice)
+initialize_qubit(mycircuit, 0)
+mycircuit.barrier()
+
+# Entangle
+entangle_qubits(mycircuit, 1, 2)
+mycircuit.barrier()
+
+
+# Do a Bell measurement
+bell_meas_Alice_qubits(mycircuit, all_qubits_Alice[0], all_qubits_Alice[1], creg1_Alice, creg2_Alice)
+mycircuit.barrier()
+
+# Apply classically controlled quantum gates
+controlled_ops_Bob_qubit(mycircuit, all_qubits_Bob[0], creg1_Alice, creg2_Alice)
+
+# Look at the complete circuit
+mycircuit.draw()
+
+
+
+
+##GROVERS ALGORITHM
+
+
+from qiskit.quantum_info import Operator
+from qiskit import QuantumCircuit
+from qiskit import*
+import numpy as np
+def phase_oracle(n, indices_to_mark, name = 'Oracle'):
+    
+    # create a quantum circuit on n qubits
+    qc = QuantumCircuit(n, name=name)
+
+
+    
+    # create the identity matrix on n qubits
+    oracle_matrix = np.identity(2**n)
+    # add the -1 phase to marked elements
+    for index_to_mark in indices_to_mark:
+        oracle_matrix[index_to_mark, index_to_mark] = -1
+        
+
+    # convert your matrix (called oracle_matrix) into an operator, and add it to the quantum circuit
+    qc.unitary(Operator(oracle_matrix), range(n))
+    
+    return qc
+phase=phase_oracle(6,[1,42])
+phase.draw('mpl')
+def diffuser(n):
+    
+    # create a quantum circuit on n qubits
+    qc = QuantumCircuit(n, name='Diffuser')
+    
+    
+    
+    # apply hadamard gates to all qubits
+    qc.h(range(n))
+    # call the phase oracle applied to the zero state
+    qc.append(phase_oracle(n, [0]), range(n))
+    # apply hadamard gates to all qubits
+    qc.h(range(n))
+    
+    
+    return qc
+def Grover(n, indices_of_marked_elements):
+    
+    # Create a quantum circuit on n qubits
+    qc = QuantumCircuit(n, n)
+    
+    # Determine r
+    r = int(np.floor(np.pi/4*np.sqrt(2**n/len(indices_of_marked_elements))))
+    print(f'{n} qubits, basis states {indices_of_marked_elements} marked, {r} rounds')
+    
+    # step 1: apply Hadamard gates on all qubits
+    qc.h(range(n))
+    
+    # step 2: apply r rounds of the phase oracle and the diffuser
+    for _ in range(r):
+        qc.append(phase_oracle(n, indices_of_marked_elements), range(n))
+        qc.append(diffuser(n), range(n))
+        
+    # step 3: measure all qubits
+    qc.measure(range(n), range(n))
+  
+    return qc
+
+mycircuit = Grover(6, [1, 42])
+mycircuit.draw()
+from qiskit import Aer, execute
+simulator = Aer.get_backend('qasm_simulator')
+counts = execute(mycircuit, backend=simulator, shots=1000).result().get_counts(mycircuit)
+from qiskit.visualization import plot_histogram
+plot_histogram(counts)
