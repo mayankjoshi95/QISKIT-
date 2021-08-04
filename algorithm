@@ -172,3 +172,70 @@ simulator = Aer.get_backend('qasm_simulator')
 counts = execute(mycircuit, backend=simulator, shots=1000).result().get_counts(mycircuit)
 from qiskit.visualization import plot_histogram
 plot_histogram(counts)
+
+
+QUANTUM PHASE ESTIMATION AND INVERSE QUANTUM FOURIER TRANSFORM
+
+
+def initialize_qubits(given_circuit, measurement_qubits, target_qubit):
+    
+    
+    given_circuit.h(measurement_qubits)
+    given_circuit.x(target_qubit)
+    
+   
+import numpy as np
+pi = np.pi 
+def unitary_operator(given_circuit, control_qubit, target_qubit, theta):
+   
+    
+    given_circuit.cu1(2*pi*theta, control_qubit, target_qubit)
+    
+def unitary_operator_exponent(given_circuit, control_qubit, target_qubit, theta, exponent):
+    
+    given_circuit.cu1(2*pi*theta*exponent, control_qubit, target_qubit)
+
+
+
+
+INVERSE QUANTUM FOURIER TRANSFORM
+
+
+
+from qiskit.circuit.library import QFT
+def apply_iqft(given_circuit, measurement_qubits, n):
+   given_circuit.append(QFT(n).inverse(), measurement_qubits)
+from qiskit import QuantumCircuit
+def qpe_program(n, theta):
+
+
+
+PUTTING IT ALL TOGETHER    
+    # Create a quantum circuit on n+1 qubits (n measurement, 1 target)
+qc = QuantumCircuit(n+1, n)
+    
+    # Initialize the qubits
+initialize_qubits(qc, range(n), n)
+    
+    # Apply the controlled unitary operators in sequence
+for x in range(n):
+        exponent = 2**(n-x-1)
+        unitary_operator_exponent(qc, x, n, theta, exponent)
+        
+    # Apply the inverse quantum Fourier transform
+apply_iqft(qc, range(n), n)
+    
+    # Measure all qubits
+qc.measure(range(n), range(n))
+  
+return qc
+
+n = 5; theta = 0.5
+mycircuit = qpe_program(n, theta)
+mycircuit.draw(output='text')
+from qiskit import Aer, execute
+simulator = Aer.get_backend('qasm_simulator')
+counts = execute(mycircuit, backend=simulator, shots=1000).result().get_counts(mycircuit)
+from qiskit.visualization import plot_histogram
+plot_histogram(counts)   
+   
